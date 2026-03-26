@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Data Quality Watchtower</title>
+    <meta name="description" content="A monitoring assistant that detects schema drift, anomalies, and suspicious dataset changes before pipelines break." />
+    <meta name="theme-color" content="#081816" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      :root {
+        --bg: #081816;
+        --bg-alt: #0d2420;
+        --panel: #13332e;
+        --text: #ecfdf5;
+        --muted: #a7c8c0;
+        --accent: #14b8a6;
+        --accent-alt: #f59e0b;
+        --border: rgba(167, 200, 192, 0.18);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <nav class="topbar">
+          <span class="brand">data-quality-watchtower</span>
+          <div class="links">
+            <a href="https://github.com/IgnazioDS/data-quality-watchtower">GitHub</a>
+            <a href="https://github.com/IgnazioDS/data-quality-watchtower/blob/main/docs/architecture.md">Architecture</a>
+            <a href="https://github.com/IgnazioDS/data-quality-watchtower/blob/main/docs/roadmap.md">Roadmap</a>
+          </div>
+        </nav>
+
+        <section class="hero-grid">
+          <div>
+            <p class="eyebrow">Shipping System</p>
+            <h1>Data Quality Watchtower</h1>
+            <p class="lede">A monitoring assistant that detects schema drift, anomalies, and suspicious dataset changes before pipelines break.</p>
+            <div class="hero-actions">
+              <a class="button primary" href="https://github.com/IgnazioDS/data-quality-watchtower">Open Repository</a>
+              <a class="button secondary" href="https://github.com/IgnazioDS/data-quality-watchtower/blob/main/README.md">Read Docs</a>
+            </div>
+          </div>
+
+          <aside class="card status-panel">
+            <div class="status-row">
+              <span>Status</span>
+              <strong>Ready to build</strong>
+            </div>
+            <div class="status-row">
+              <span>Category</span>
+              <strong>Data Tool</strong>
+            </div>
+            <div class="status-row">
+              <span>Track</span>
+              <strong>ML</strong>
+            </div>
+            <div class="status-row">
+              <span>Audience</span>
+              <strong>Data teams, analytics engineers, ML ops teams</strong>
+            </div>
+          </aside>
+        </section>
+      </header>
+
+      <main>
+        <section class="grid two-up">
+          <article class="card narrative">
+            <p class="eyebrow">Problem</p>
+            <h2>Operational pain, made explicit.</h2>
+            <p>Data issues usually surface downstream after dashboards, models, or reports are already wrong.</p>
+          </article>
+
+          <article class="card narrative">
+            <p class="eyebrow">Why Now</p>
+            <h2>Built for a market that already feels the gap.</h2>
+            <p>Data quality remains operationally important even for AI-native products.</p>
+          </article>
+        </section>
+
+        <section class="section-head">
+          <p class="eyebrow">Core Capabilities</p>
+          <h2>Focused scope, credible surface area.</h2>
+        </section>
+        <section class="grid capabilities">
+          
+        <article class="card capability">
+          <span class="eyebrow">Capability 1</span>
+          <h3>Profile tabular datasets and schemas</h3>
+          <p>Designed as a production-facing workflow instead of a throwaway demo path.</p>
+        </article>
+
+        <article class="card capability">
+          <span class="eyebrow">Capability 2</span>
+          <h3>Detect drift and row-level anomalies</h3>
+          <p>Designed as a production-facing workflow instead of a throwaway demo path.</p>
+        </article>
+
+        <article class="card capability">
+          <span class="eyebrow">Capability 3</span>
+          <h3>Generate plain-language incident summaries</h3>
+          <p>Designed as a production-facing workflow instead of a throwaway demo path.</p>
+        </article>
+
+        <article class="card capability">
+          <span class="eyebrow">Capability 4</span>
+          <h3>Store historical validation results</h3>
+          <p>Designed as a production-facing workflow instead of a throwaway demo path.</p>
+        </article>
+        </section>
+
+        <section class="grid two-up lower">
+          <article class="card stack-panel">
+            <p class="eyebrow">Stack Direction</p>
+            <h2>Implementation posture</h2>
+            <ul class="stack-list">
+              <li>Python</li><li>DuckDB</li><li>Great Expectations</li><li>Pandas</li>
+            </ul>
+          </article>
+
+          <article class="card command-panel">
+            <p class="eyebrow">Local Entry Points</p>
+            <h2>Minimal interface, easy to demo</h2>
+            <pre><code>uv run data-quality-watchtower summary
+uv run data-quality-watchtower capabilities
+uv run data-quality-watchtower roadmap
+vercel deploy -y</code></pre>
+          </article>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
