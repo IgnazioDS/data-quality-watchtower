@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "data-quality-watchtower"
+version = "0.1.0"
+description = "A monitoring assistant that detects schema drift, anomalies, and suspicious dataset changes before pipelines break."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "Ignazio De Santis" }
+]
+dependencies = []
+
+[project.scripts]
+data-quality-watchtower = "data_quality_watchtower.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+data_quality_watchtower = ["project.json"]
