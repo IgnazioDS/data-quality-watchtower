@@ -19,6 +19,10 @@ data-quality-watchtower = "data_quality_watchtower.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+# Scope discovery to the Python package only — the Next.js dashboard
+# also lives under src/ and we don't want setuptools treating those
+# directories as Python modules.
+include = ["data_quality_watchtower*"]
 
 [tool.setuptools.package-data]
 data_quality_watchtower = ["project.json"]
