@@ -2,13 +2,13 @@
 
 > A monitoring assistant that detects schema drift, anomalies, and suspicious dataset changes before pipelines break — not after the dashboard turns red.
 
-[**Live dashboard →**](https://data-quality-watchtower.eleventh.dev) · Stage: Ready to build · Track: ML · Category: Data Tool
+[**Live dashboard →**](https://data-quality-watchtower.eleventh.dev) · Stage: Prototype · Track: ML · Category: Data Tool
 
 ---
 
-## Status: showcase-state
+## Status: prototype-state
 
-**This repository is in showcase-state.** The watchtower itself — the schema-delta engine, the anomaly detector, the alert router, the historical validation store — is not yet in this repo. What ships now is a public dashboard, a stdlib-only telemetry endpoint, and a Python CLI scaffold that exposes the project contract. See [What ships right now](#what-ships-right-now) for the audit.
+**This repository now ships a real local profiler and drift comparator.** The Python package can fingerprint CSV schemas, infer types, measure null-rate and numeric distribution drift, summarize outliers, and generate a plain-English incident report from two saved profile snapshots. The public dashboard is still the showcase shell, but the watchtower’s core contract is no longer hypothetical.
 
 For an example of what one of these projects looks like once graduated to production, see [NexusRAG](https://github.com/IgnazioDS/NexusRAG) — same operator, same engineering bar, fully shipped.
 
@@ -46,16 +46,16 @@ Watchtower exists because the cost of "find out at dashboard time" is far higher
 
 ---
 
-## Planned MVP
+## Working MVP
 
-The system the dashboard will graduate to:
+The local slice that ships in this repo today:
 
-- Profile tabular datasets and schemas (columns, types, distributions, cardinality)
-- Detect schema drift, value-distribution drift, and row-level anomalies
-- Generate plain-language incident summaries naming the failure mode
-- Store historical validation results — every check, every result, indexed for replay
+- Profile CSV datasets into a reusable JSON artifact
+- Compute schema fingerprints, inferred types, row counts, null rates, unique counts, and numeric outlier summaries
+- Compare two saved profile snapshots for added/removed columns, type changes, row-count drift, null-rate drift, and suspicious numeric shifts
+- Emit a plain-English incident summary with severity classification
 
-**Planned product stack**: Python · DuckDB (analytic engine + ledger) · Great Expectations (assertion bridge) · Pandas (frame interop).
+**Current product stack**: Python · CSV profiler · JSON profile artifacts · Next.js dashboard.
 
 ---
 
@@ -79,54 +79,53 @@ Next.js 14 App Router app at the live URL above. Five routes:
 
 Stdlib-only Vercel Python serverless function. Reports honest GitHub-derived signals — commits, stars, last commit, primary language, lines of code. Never simulated workload metrics. Contract documented in [TELEMETRY_SCHEMA.md](https://github.com/IgnazioDS/IgnazioDS/blob/main/TELEMETRY_SCHEMA.md).
 
-### 3. Python CLI scaffold (`src/data_quality_watchtower/`)
+### 3. Python profiler + drift comparator (`src/data_quality_watchtower/`)
 
-Argparse-based CLI exposing the project contract. Currently three subcommands:
+Argparse-based CLI with a real local workflow:
 
 ```
 data-quality-watchtower summary       # name, summary, problem, users, stage, track
 data-quality-watchtower capabilities  # planned MVP capabilities
 data-quality-watchtower roadmap       # docs/roadmap.md
+data-quality-watchtower profile examples/orders.csv --output baseline.json
+data-quality-watchtower profile examples/orders_drifted.csv --output new_run.json
+data-quality-watchtower compare baseline.json new_run.json
 ```
 
-The CLI reads `project.json` — a typed registry that drives the dashboard's `/capabilities` route and the CLI. When MVP work begins, the watchtower primitives (profiler, drift detector, alert router) layer onto this scaffold.
+The CLI reads `project.json` for shared metadata, but the core watchtower path now works end to end: CSV in, profile JSON out, then a saved-profile diff into a human-readable incident report.
 
-### 4. Deploy + telemetry pipeline
+### 4. Example datasets (`examples/`)
+
+The repo includes a baseline `orders.csv` snapshot and a drifted `orders_drifted.csv` snapshot that intentionally exercise:
+
+- row-count drop
+- added and removed columns
+- type change detection
+- null-rate drift
+- suspicious revenue outliers
+
+### 5. Deploy + telemetry pipeline
 
 Vercel deploy with `/api/stats` cached 5 minutes, GitHub Actions for the type-check + vitest gate, build-time `_telemetry_static.json` artifact computed by `scripts/compute_telemetry_static.py`.
 
 ---
 
-## Architecture (graduation path)
+## Architecture
 
 ```
-┌──── current repo state (showcase-tier) ────────────────────────────┐
+┌──── current repo state (prototype-tier) ───────────────────────────┐
 │                                                                    │
 │  Next.js dashboard ──▶  /api/stats (stdlib Python)  ──▶  GitHub   │
 │  (5 routes)              cached 5 min                      API     │
 │       │                                                            │
 │       └─▶  reads ──▶  project.json  ◀── reads ── Python CLI       │
 │                       (typed registry)                             │
-└────────────────────────────────────────────────────────────────────┘
-
-                              │  graduates to
-                              ▼
-
-┌──── planned MVP (Tier-A) ──────────────────────────────────────────┐
-│                                                                    │
-│  Watcher (DuckDB) ──▶ Profiler ──▶ Drift detector ──▶ Alert       │
-│        │                  │             │              router      │
-│        │                  │             │                │         │
-│        │                  ▼             ▼                ▼         │
-│        │            Schema ledger  Value-dist  Cardinality        │
-│        │                            history    history             │
-│        │                                                            │
-│        └──▶ Validation ledger (every check, every result, indexed) │
-│                                                                    │
+│                                  │                                 │
+│                                  └─▶ CSV profiler ─▶ Incident diff │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-The current dashboard is the public-facing shell. The Python CLI is the spine the MVP watchtower will extend. `project.json` stays as the single source of truth for what the system claims to be.
+The current dashboard is the public-facing shell. The Python CLI now includes the first real watchtower slice: schema fingerprinting, null-rate tracking, numeric drift detection, and incident reporting from saved snapshots.
 
 ---
 
@@ -141,13 +140,13 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-### Run the Python CLI scaffold
+### Run the Python watchtower
 
 ```bash
 cd data-quality-watchtower
-python -m data_quality_watchtower.cli summary
-python -m data_quality_watchtower.cli capabilities
-python -m data_quality_watchtower.cli roadmap
+python -m data_quality_watchtower.cli profile examples/orders.csv --output baseline.json
+python -m data_quality_watchtower.cli profile examples/orders_drifted.csv --output new_run.json
+python -m data_quality_watchtower.cli compare baseline.json new_run.json
 ```
 
 ### Test + type-check
@@ -156,7 +155,7 @@ python -m data_quality_watchtower.cli roadmap
 npm run lint
 npm run type-check
 npm test                    # vitest suite
-python -m pytest tests/     # python tests
+python -m unittest discover -s tests -p 'test_*.py'
 ```
 
 ---
@@ -179,7 +178,7 @@ Next.js 14 App Router · TypeScript strict · Tailwind 3 · Geist Sans + Mono ·
 - **Operator's hub**: [eleventh.dev](https://eleventh.dev) — the public site this dashboard's telemetry feeds into
 - **Reference shipped project**: [NexusRAG](https://github.com/IgnazioDS/NexusRAG) — production-grade multi-tenant RAG agent platform, same operator
 - **Telemetry contract**: [TELEMETRY_SCHEMA.md](https://github.com/IgnazioDS/IgnazioDS/blob/main/TELEMETRY_SCHEMA.md) — what the Tier-B counters mean and what they don't
-- **Status of this project**: showcase-tier. The watchtower graduates when the drift detector and alert router are live against a real dataset.
+- **Status of this project**: prototype-tier. The local profiler and snapshot diff ship today; the next step is richer baselines, persistence, and live alert routing.
 
 ---
 

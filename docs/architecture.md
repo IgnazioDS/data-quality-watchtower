@@ -2,7 +2,7 @@
 
 ## Product Shape
 
-Data Quality Watchtower starts as a focused Python service or CLI with a clean domain boundary. The local interface is intentionally small so the core logic can evolve into an API, worker, or scheduled job without rework.
+Data Quality Watchtower now has a real local boundary: CSV profiling, saved profile artifacts, and snapshot comparison with a plain-English incident summary. The interface is still intentionally small so the same core can evolve into an API, worker, or scheduled job without rework.
 
 ## Design Priorities
 
@@ -15,4 +15,5 @@ Data Quality Watchtower starts as a focused Python service or CLI with a clean d
 
 - `models.py` defines the typed project metadata.
 - `catalog.py` loads the shipped product spec.
-- `cli.py` exposes summary, capabilities, and roadmap commands.
+- `cli.py` exposes summary, profile, compare, capabilities, and roadmap commands.
+- `watchtower.py` implements schema fingerprinting, type inference, null-rate analysis, numeric outlier summaries, and profile comparison.

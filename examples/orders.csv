@@ -1,0 +1,13 @@
+order_id,customer_id,status,revenue_usd,discount_pct,items_count,region
+1001,501,paid,120.50,0.05,3,NA
+1002,502,paid,84.20,0.00,2,NA
+1003,503,refunded,42.00,0.10,1,EU
+1004,504,paid,199.99,0.15,4,NA
+1005,505,paid,76.40,0.00,2,APAC
+1006,506,paid,88.10,0.05,2,EU
+1007,507,paid,156.75,0.20,5,NA
+1008,508,pending,64.00,0.00,1,EU
+1009,509,paid,132.30,0.05,3,APAC
+1010,510,paid,91.80,0.00,2,NA
+1011,511,paid,110.25,0.05,3,EU
+1012,512,paid,74.60,0.10,2,NA

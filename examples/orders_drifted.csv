@@ -1,0 +1,10 @@
+order_id,customer_id,status,revenue_usd,discount_pct,items_count,coupon_code
+1001,501,paid,118.00,,3,SPRING10
+1002,C-502,paid,0.00,,2,
+1003,C-503,refunded,38.00,,1,
+1004,C-504,paid,5400.00,0.35,4,VIPSAVE
+1005,C-505,paid,12.00,,2,
+1006,C-506,paid,15.00,,2,
+1007,C-507,pending,9.50,,1,
+1008,C-508,pending,11.25,,1,
+1009,C-509,paid,18.40,,2,

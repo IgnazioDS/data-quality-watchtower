@@ -26,7 +26,7 @@ export const PROJECT: ProjectSpec = {
   name: "Data Quality Watchtower",
   category: "Data Tool",
   track: "ML",
-  stage: "Ready to build",
+  stage: "Prototype",
   summary:
     "A monitoring assistant that detects schema drift, anomalies, and suspicious dataset changes before pipelines break.",
   problem:
@@ -40,6 +40,7 @@ export const PROJECT: ProjectSpec = {
     "Detect drift and row-level anomalies",
     "Generate plain-language incident summaries",
     "Store historical validation results",
+    "Compare saved profiles for schema, null-rate, and outlier drift",
   ],
   github_url: "https://github.com/IgnazioDS/data-quality-watchtower",
   system_slug: "data-quality-watchtower",

@@ -6,6 +6,7 @@
 - Detect drift and row-level anomalies
 - Generate plain-language incident summaries
 - Store historical validation results
+- Compare saved snapshots for schema, null-rate, and outlier drift
 
 ## Phase 2
 
