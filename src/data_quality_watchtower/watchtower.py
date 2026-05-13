@@ -29,7 +29,9 @@ class ColumnProfile:
     null_count: int
     null_rate: float
     unique_count: int
+    unique_ratio: float
     sample_values: list[str]
+    top_values: list[dict[str, Any]]
     numeric_summary: NumericSummary | None
 
 
@@ -56,8 +58,24 @@ class ProfileComparison:
     type_changes: list[dict[str, str]]
     null_rate_drifts: list[dict[str, Any]]
     numeric_drifts: list[dict[str, Any]]
+    cardinality_drifts: list[dict[str, Any]]
     incident_summary: str
     incident_severity: str
+
+
+@dataclass(frozen=True)
+class GateResult:
+    comparison: ProfileComparison
+    passed: bool
+    reasons: list[str]
+    allowed_severity: str
+    max_row_count_drop_ratio: float
+    max_null_drift_count: int
+    max_numeric_drift_count: int
+    max_cardinality_drift_count: int
+
+
+SEVERITY_ORDER = {"info": 0, "warning": 1, "critical": 2}
 
 
 def profile_dataset(csv_path: str | Path) -> DatasetProfile:
@@ -90,7 +108,12 @@ def load_profile(profile_path: str | Path) -> DatasetProfile:
             null_count=int(item["null_count"]),
             null_rate=float(item["null_rate"]),
             unique_count=int(item["unique_count"]),
+            unique_ratio=float(item["unique_ratio"]),
             sample_values=[str(value) for value in item["sample_values"]],
+            top_values=[
+                {"value": str(entry["value"]), "count": int(entry["count"]), "rate": float(entry["rate"])}
+                for entry in item.get("top_values", [])
+            ],
             numeric_summary=(
                 NumericSummary(
                     min_value=float(item["numeric_summary"]["min_value"]),
@@ -118,10 +141,7 @@ def load_profile(profile_path: str | Path) -> DatasetProfile:
     )
 
 
-def compare_profiles(
-    baseline_profile_path: str | Path,
-    candidate_profile_path: str | Path,
-) -> ProfileComparison:
+def compare_profiles(baseline_profile_path: str | Path, candidate_profile_path: str | Path) -> ProfileComparison:
     baseline = load_profile(baseline_profile_path)
     candidate = load_profile(candidate_profile_path)
 
@@ -134,6 +154,7 @@ def compare_profiles(
     type_changes: list[dict[str, str]] = []
     null_rate_drifts: list[dict[str, Any]] = []
     numeric_drifts: list[dict[str, Any]] = []
+    cardinality_drifts: list[dict[str, Any]] = []
 
     shared_columns = sorted(set(baseline_columns) & set(candidate_columns))
     for name in shared_columns:
@@ -159,12 +180,26 @@ def compare_profiles(
                 }
             )
 
+        unique_ratio_delta = round(cand.unique_ratio - base.unique_ratio, 3)
+        unique_count_ratio = _ratio_delta(float(base.unique_count), float(cand.unique_count))
+        if unique_ratio_delta <= -0.2 or (
+            base.unique_ratio < 0.9 and unique_count_ratio <= -0.3
+        ):
+            cardinality_drifts.append(
+                {
+                    "column": name,
+                    "baseline_unique_count": base.unique_count,
+                    "candidate_unique_count": cand.unique_count,
+                    "baseline_unique_ratio": base.unique_ratio,
+                    "candidate_unique_ratio": cand.unique_ratio,
+                    "unique_count_delta_ratio": unique_count_ratio,
+                    "unique_ratio_delta": unique_ratio_delta,
+                }
+            )
+
         if base.numeric_summary and cand.numeric_summary:
             mean_delta_ratio = _ratio_delta(base.numeric_summary.mean, cand.numeric_summary.mean)
-            outlier_delta = round(
-                cand.numeric_summary.outlier_rate - base.numeric_summary.outlier_rate,
-                3,
-            )
+            outlier_delta = round(cand.numeric_summary.outlier_rate - base.numeric_summary.outlier_rate, 3)
             if abs(mean_delta_ratio) >= 0.2 or abs(outlier_delta) >= 0.05:
                 numeric_drifts.append(
                     {
@@ -188,6 +223,7 @@ def compare_profiles(
         type_changes=type_changes,
         null_rate_drifts=null_rate_drifts,
         numeric_drifts=numeric_drifts,
+        cardinality_drifts=cardinality_drifts,
     )
 
     return ProfileComparison(
@@ -206,8 +242,58 @@ def compare_profiles(
             key=lambda item: max(abs(item["mean_delta_ratio"]), abs(item["outlier_delta"])),
             reverse=True,
         ),
+        cardinality_drifts=sorted(
+            cardinality_drifts,
+            key=lambda item: max(abs(item["unique_count_delta_ratio"]), abs(item["unique_ratio_delta"])),
+            reverse=True,
+        ),
         incident_summary=incident_summary,
         incident_severity=severity,
+    )
+
+
+def assess_gate(
+    comparison: ProfileComparison,
+    *,
+    allowed_severity: str = "warning",
+    max_row_count_drop_ratio: float = 0.15,
+    max_null_drift_count: int = 0,
+    max_numeric_drift_count: int = 0,
+    max_cardinality_drift_count: int = 0,
+) -> GateResult:
+    reasons: list[str] = []
+    if SEVERITY_ORDER[comparison.incident_severity] > SEVERITY_ORDER[allowed_severity]:
+        reasons.append(
+            f"incident severity {comparison.incident_severity} exceeded allowed {allowed_severity}"
+        )
+
+    row_drop_ratio = max(0.0, round(-comparison.row_count_delta_ratio, 3))
+    if row_drop_ratio > max_row_count_drop_ratio:
+        reasons.append(
+            f"row-count drop {row_drop_ratio:.3f} exceeded limit {max_row_count_drop_ratio:.3f}"
+        )
+    if len(comparison.null_rate_drifts) > max_null_drift_count:
+        reasons.append(
+            f"null-rate drift count {len(comparison.null_rate_drifts)} exceeded limit {max_null_drift_count}"
+        )
+    if len(comparison.numeric_drifts) > max_numeric_drift_count:
+        reasons.append(
+            f"numeric drift count {len(comparison.numeric_drifts)} exceeded limit {max_numeric_drift_count}"
+        )
+    if len(comparison.cardinality_drifts) > max_cardinality_drift_count:
+        reasons.append(
+            f"cardinality drift count {len(comparison.cardinality_drifts)} exceeded limit {max_cardinality_drift_count}"
+        )
+
+    return GateResult(
+        comparison=comparison,
+        passed=not reasons,
+        reasons=reasons,
+        allowed_severity=allowed_severity,
+        max_row_count_drop_ratio=max_row_count_drop_ratio,
+        max_null_drift_count=max_null_drift_count,
+        max_numeric_drift_count=max_numeric_drift_count,
+        max_cardinality_drift_count=max_cardinality_drift_count,
     )
 
 
@@ -222,8 +308,11 @@ def format_profile(profile: DatasetProfile) -> str:
     ]
     for column in profile.columns:
         lines.append(
-            f"- {column.name} [{column.inferred_type}] null_rate={column.null_rate:.3f} unique={column.unique_count}"
+            f"- {column.name} [{column.inferred_type}] null_rate={column.null_rate:.3f} unique={column.unique_count} unique_ratio={column.unique_ratio:.3f}"
         )
+        if column.top_values:
+            preview = ", ".join(f"{item['value']} ({item['count']})" for item in column.top_values[:3])
+            lines.append(f"  top values: {preview}")
         if column.numeric_summary:
             lines.append(
                 (
@@ -237,11 +326,33 @@ def format_profile(profile: DatasetProfile) -> str:
     return "\n".join(lines)
 
 
-def format_comparison(comparison: ProfileComparison) -> str:
+def format_profile_markdown(profile: DatasetProfile, *, limit: int = 20) -> str:
+    lines = [
+        "# Dataset Profile",
+        "",
+        f"- Dataset: `{profile.dataset_path}`",
+        f"- Rows: `{profile.row_count}`",
+        f"- Columns: `{profile.column_count}`",
+        f"- Schema fingerprint: `{profile.schema_fingerprint}`",
+        "",
+        "| column | type | null rate | unique count | unique ratio |",
+        "| --- | --- | ---: | ---: | ---: |",
+    ]
+    for column in profile.columns[:limit]:
+        lines.append(
+            f"| `{column.name}` | `{column.inferred_type}` | `{column.null_rate:.3f}` | `{column.unique_count}` | `{column.unique_ratio:.3f}` |"
+        )
+    return "\n".join(lines)
+
+
+def format_comparison(comparison: ProfileComparison, *, limit: int = 10) -> str:
     lines = [
         f"Compare {comparison.baseline_profile} -> {comparison.candidate_profile}",
         f"Severity: {comparison.incident_severity}",
-        f"Rows: {comparison.baseline_row_count} -> {comparison.candidate_row_count} ({comparison.row_count_delta:+d}, {comparison.row_count_delta_ratio:+.3f})",
+        (
+            f"Rows: {comparison.baseline_row_count} -> {comparison.candidate_row_count} "
+            f"({comparison.row_count_delta:+d}, {comparison.row_count_delta_ratio:+.3f})"
+        ),
         f"Incident: {comparison.incident_summary}",
         "",
         f"Added columns: {', '.join(comparison.added_columns) if comparison.added_columns else 'none'}",
@@ -251,7 +362,7 @@ def format_comparison(comparison: ProfileComparison) -> str:
     ]
     lines.extend(
         f"- {item['column']}: {item['baseline_type']} -> {item['candidate_type']}"
-        for item in comparison.type_changes
+        for item in comparison.type_changes[:limit]
     )
     lines.extend(["", f"Null-rate drifts: {len(comparison.null_rate_drifts)}"])
     lines.extend(
@@ -260,7 +371,7 @@ def format_comparison(comparison: ProfileComparison) -> str:
             f"{item['baseline_null_rate']:.3f} -> {item['candidate_null_rate']:.3f} "
             f"({item['delta']:+.3f})"
         )
-        for item in comparison.null_rate_drifts[:10]
+        for item in comparison.null_rate_drifts[:limit]
     )
     lines.extend(["", f"Numeric drifts: {len(comparison.numeric_drifts)}"])
     lines.extend(
@@ -270,8 +381,78 @@ def format_comparison(comparison: ProfileComparison) -> str:
             f"({item['mean_delta_ratio']:+.3f}), "
             f"outliers {item['baseline_outlier_rate']:.3f} -> {item['candidate_outlier_rate']:.3f}"
         )
-        for item in comparison.numeric_drifts[:10]
+        for item in comparison.numeric_drifts[:limit]
     )
+    lines.extend(["", f"Cardinality drifts: {len(comparison.cardinality_drifts)}"])
+    lines.extend(
+        (
+            f"- {item['column']}: "
+            f"unique_count {item['baseline_unique_count']} -> {item['candidate_unique_count']} "
+            f"({item['unique_count_delta_ratio']:+.3f}), "
+            f"unique_ratio {item['baseline_unique_ratio']:.3f} -> {item['candidate_unique_ratio']:.3f}"
+        )
+        for item in comparison.cardinality_drifts[:limit]
+    )
+    return "\n".join(lines)
+
+
+def format_comparison_markdown(comparison: ProfileComparison, *, limit: int = 10) -> str:
+    lines = [
+        "# Data Quality Incident Report",
+        "",
+        f"- Baseline profile: `{comparison.baseline_profile}`",
+        f"- Candidate profile: `{comparison.candidate_profile}`",
+        f"- Severity: `{comparison.incident_severity}`",
+        f"- Row-count delta ratio: `{comparison.row_count_delta_ratio:+.3f}`",
+        f"- Summary: {comparison.incident_summary}",
+        "",
+        "## Schema changes",
+        "",
+        f"- Added columns: {', '.join(comparison.added_columns) if comparison.added_columns else 'none'}",
+        f"- Removed columns: {', '.join(comparison.removed_columns) if comparison.removed_columns else 'none'}",
+        "",
+        "## Drift table",
+        "",
+        "| category | column | delta | details |",
+        "| --- | --- | ---: | --- |",
+    ]
+    for item in comparison.type_changes[:limit]:
+        lines.append(
+            f"| type change | `{item['column']}` | n/a | `{item['baseline_type']}` -> `{item['candidate_type']}` |"
+        )
+    for item in comparison.null_rate_drifts[:limit]:
+        lines.append(
+            f"| null drift | `{item['column']}` | `{item['delta']:+.3f}` | `{item['baseline_null_rate']:.3f}` -> `{item['candidate_null_rate']:.3f}` |"
+        )
+    for item in comparison.numeric_drifts[:limit]:
+        lines.append(
+            f"| numeric drift | `{item['column']}` | `{item['mean_delta_ratio']:+.3f}` | mean `{item['baseline_mean']:.3f}` -> `{item['candidate_mean']:.3f}`, outliers `{item['baseline_outlier_rate']:.3f}` -> `{item['candidate_outlier_rate']:.3f}` |"
+        )
+    for item in comparison.cardinality_drifts[:limit]:
+        lines.append(
+            f"| cardinality drift | `{item['column']}` | `{item['unique_count_delta_ratio']:+.3f}` | unique `{item['baseline_unique_count']}` -> `{item['candidate_unique_count']}`, ratio `{item['baseline_unique_ratio']:.3f}` -> `{item['candidate_unique_ratio']:.3f}` |"
+        )
+    return "\n".join(lines)
+
+
+def format_gate_result(gate: GateResult, *, limit: int = 10) -> str:
+    verdict = "Gate PASS" if gate.passed else "Gate FAIL"
+    lines = [
+        verdict,
+        (
+            "Policy: "
+            f"severity<={gate.allowed_severity}, "
+            f"row_drop<={gate.max_row_count_drop_ratio:.3f}, "
+            f"null_drifts<={gate.max_null_drift_count}, "
+            f"numeric_drifts<={gate.max_numeric_drift_count}, "
+            f"cardinality_drifts<={gate.max_cardinality_drift_count}"
+        ),
+        "",
+        format_comparison(gate.comparison, limit=limit),
+    ]
+    if gate.reasons:
+        lines.extend(["", "Reasons:"])
+        lines.extend(f"- {reason}" for reason in gate.reasons)
     return "\n".join(lines)
 
 
@@ -299,8 +480,22 @@ def comparison_to_dict(comparison: ProfileComparison) -> dict[str, Any]:
         "type_changes": comparison.type_changes,
         "null_rate_drifts": comparison.null_rate_drifts,
         "numeric_drifts": comparison.numeric_drifts,
+        "cardinality_drifts": comparison.cardinality_drifts,
         "incident_summary": comparison.incident_summary,
         "incident_severity": comparison.incident_severity,
+    }
+
+
+def gate_result_to_dict(gate: GateResult) -> dict[str, Any]:
+    return {
+        "passed": gate.passed,
+        "reasons": gate.reasons,
+        "allowed_severity": gate.allowed_severity,
+        "max_row_count_drop_ratio": gate.max_row_count_drop_ratio,
+        "max_null_drift_count": gate.max_null_drift_count,
+        "max_numeric_drift_count": gate.max_numeric_drift_count,
+        "max_cardinality_drift_count": gate.max_cardinality_drift_count,
+        "comparison": comparison_to_dict(gate.comparison),
     }
 
 
@@ -317,7 +512,9 @@ def column_to_dict(column: ColumnProfile) -> dict[str, Any]:
         "null_count": column.null_count,
         "null_rate": column.null_rate,
         "unique_count": column.unique_count,
+        "unique_ratio": column.unique_ratio,
         "sample_values": column.sample_values,
+        "top_values": column.top_values,
         "numeric_summary": (
             {
                 "min_value": column.numeric_summary.min_value,
@@ -343,17 +540,33 @@ def _profile_column(name: str, rows: list[dict[str, str | None]]) -> ColumnProfi
     sample_values = list(dict.fromkeys(non_null_values))[:3]
     unique_count = len(set(non_null_values))
     null_count = len(normalized_values) - len(non_null_values)
-    null_rate = round(null_count / len(normalized_values), 3) if normalized_values else 0.0
+    row_count = len(normalized_values)
+    null_rate = round(null_count / row_count, 3) if row_count else 0.0
+    unique_ratio = round(unique_count / row_count, 3) if row_count else 0.0
     numeric_summary = _numeric_summary(non_null_values) if inferred_type in {"integer", "float"} else None
+    top_values = _top_values(non_null_values, row_count)
     return ColumnProfile(
         name=name,
         inferred_type=inferred_type,
         null_count=null_count,
         null_rate=null_rate,
         unique_count=unique_count,
+        unique_ratio=unique_ratio,
         sample_values=sample_values,
+        top_values=top_values,
         numeric_summary=numeric_summary,
     )
+
+
+def _top_values(values: list[str], row_count: int) -> list[dict[str, Any]]:
+    counts: dict[str, int] = {}
+    for value in values:
+        counts[value] = counts.get(value, 0) + 1
+    ordered = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    return [
+        {"value": key, "count": count, "rate": round(count / row_count, 3) if row_count else 0.0}
+        for key, count in ordered[:3]
+    ]
 
 
 def _normalize_cell(value: str | None) -> str | None:
@@ -435,14 +648,18 @@ def _incident_report(
     type_changes: list[dict[str, str]],
     null_rate_drifts: list[dict[str, Any]],
     numeric_drifts: list[dict[str, Any]],
+    cardinality_drifts: list[dict[str, Any]],
 ) -> tuple[str, str]:
     row_delta_ratio = abs(_ratio_delta(float(baseline.row_count), float(candidate.row_count)))
     severe_nulls = [item for item in null_rate_drifts if abs(item["delta"]) >= 0.2]
     severe_numeric = [
         item for item in numeric_drifts if abs(item["mean_delta_ratio"]) >= 0.5 or abs(item["outlier_delta"]) >= 0.15
     ]
+    severe_cardinality = [
+        item for item in cardinality_drifts if item["unique_count_delta_ratio"] <= -0.5 or item["unique_ratio_delta"] <= -0.4
+    ]
 
-    if removed_columns or type_changes or row_delta_ratio >= 0.25:
+    if removed_columns or type_changes or row_delta_ratio >= 0.25 or severe_cardinality:
         parts = []
         if removed_columns:
             parts.append(f"columns removed: {', '.join(removed_columns)}")
@@ -453,9 +670,14 @@ def _incident_report(
             )
         if row_delta_ratio >= 0.25:
             parts.append(f"row count moved from {baseline.row_count} to {candidate.row_count}")
+        if severe_cardinality:
+            worst = severe_cardinality[0]
+            parts.append(
+                f"cardinality collapse on {worst['column']} ({worst['baseline_unique_count']} -> {worst['candidate_unique_count']})"
+            )
         return ("Critical incident: " + "; ".join(parts) + "."), "critical"
 
-    if added_columns or severe_nulls or severe_numeric:
+    if added_columns or severe_nulls or severe_numeric or cardinality_drifts:
         parts = []
         if added_columns:
             parts.append(f"new columns detected: {', '.join(added_columns)}")
@@ -469,9 +691,14 @@ def _incident_report(
             parts.append(
                 f"numeric shift on {worst_numeric['column']} (mean delta {worst_numeric['mean_delta_ratio']:+.3f}, outlier delta {worst_numeric['outlier_delta']:+.3f})"
             )
+        elif cardinality_drifts:
+            worst_cardinality = cardinality_drifts[0]
+            parts.append(
+                f"cardinality drift on {worst_cardinality['column']} ({worst_cardinality['baseline_unique_count']} -> {worst_cardinality['candidate_unique_count']})"
+            )
         return ("Warning incident: " + "; ".join(parts) + "."), "warning"
 
-    return ("Healthy profile change: no material schema or value drift detected."), "info"
+    return "Healthy profile change: no material schema or value drift detected.", "info"
 
 
 def _is_int(value: str) -> bool:

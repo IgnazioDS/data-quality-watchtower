@@ -10,6 +10,7 @@ import {
   Map,
   Search,
   Settings,
+  ShieldAlert,
   Zap,
 } from "lucide-react";
 import { useCommandPalette } from "./CommandPalette";
@@ -27,6 +28,7 @@ interface NavItem {
 
 const PRIMARY: NavItem[] = [
   { href: "/", label: "Overview", icon: LayoutDashboard, desc: "Dashboard" },
+  { href: "/prototype", label: "Prototype", icon: ShieldAlert, desc: "Incident story" },
   { href: "/telemetry", label: "Telemetry", icon: Activity, desc: "/api/stats" },
   { href: "/capabilities", label: "Capabilities", icon: ListChecks, desc: "MVP scope" },
   { href: "/roadmap", label: "Roadmap", icon: Map, desc: "Stage + plan" },

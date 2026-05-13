@@ -8,7 +8,7 @@
 
 ## Status: prototype-state
 
-**This repository now ships a real local profiler and drift comparator.** The Python package can fingerprint CSV schemas, infer types, measure null-rate and numeric distribution drift, summarize outliers, and generate a plain-English incident report from two saved profile snapshots. The public dashboard is still the showcase shell, but the watchtower’s core contract is no longer hypothetical.
+**This repository now ships a real local profiler, incident comparator, and drift gate.** The Python package can fingerprint CSV schemas, infer types, measure null-rate and numeric distribution drift, detect cardinality collapse, inspect saved profiles, export markdown incident reports, and fail a gate when a dataset change crosses explicit thresholds. The public dashboard now includes a prototype incident route that demonstrates the loop end to end.
 
 For an example of what one of these projects looks like once graduated to production, see [NexusRAG](https://github.com/IgnazioDS/NexusRAG) — same operator, same engineering bar, fully shipped.
 
@@ -52,8 +52,9 @@ The local slice that ships in this repo today:
 
 - Profile CSV datasets into a reusable JSON artifact
 - Compute schema fingerprints, inferred types, row counts, null rates, unique counts, and numeric outlier summaries
-- Compare two saved profile snapshots for added/removed columns, type changes, row-count drift, null-rate drift, and suspicious numeric shifts
+- Compare two saved profile snapshots for added/removed columns, type changes, row-count drift, null-rate drift, suspicious numeric shifts, and cardinality collapse
 - Emit a plain-English incident summary with severity classification
+- Enforce a deploy gate from saved snapshots with explicit severity and drift thresholds
 
 **Current product stack**: Python · CSV profiler · JSON profile artifacts · Next.js dashboard.
 
@@ -65,11 +66,12 @@ This is what is in the repo today, audited honestly.
 
 ### 1. Showcase dashboard (`/`)
 
-Next.js 14 App Router app at the live URL above. Five routes:
+Next.js 14 App Router app at the live URL above. Six routes:
 
 | path | what it shows |
 |---|---|
 | `/` | Overview — pitch banner, live `/api/stats` Tier-B counters, system status, audience + stack |
+| `/prototype` | Real incident walkthrough — baseline vs drifted snapshot, gate verdict, CLI flow |
 | `/telemetry` | Polling telemetry consumer — full metric grid, raw JSON, 30s visibility-aware polling, contract docs |
 | `/capabilities` | MVP scope, problem statement, why-now, audience, stack — read from `project.json` |
 | `/roadmap` | Three-phase timeline (showcase → MVP build → Tier-A graduation) |
@@ -85,14 +87,16 @@ Argparse-based CLI with a real local workflow:
 
 ```
 data-quality-watchtower summary       # name, summary, problem, users, stage, track
-data-quality-watchtower capabilities  # planned MVP capabilities
+data-quality-watchtower capabilities  # shipped local capabilities
 data-quality-watchtower roadmap       # docs/roadmap.md
 data-quality-watchtower profile examples/orders.csv --output baseline.json
 data-quality-watchtower profile examples/orders_drifted.csv --output new_run.json
+data-quality-watchtower show baseline.json
 data-quality-watchtower compare baseline.json new_run.json
+data-quality-watchtower gate baseline.json new_run.json
 ```
 
-The CLI reads `project.json` for shared metadata, but the core watchtower path now works end to end: CSV in, profile JSON out, then a saved-profile diff into a human-readable incident report.
+The CLI reads `project.json` for shared metadata, but the core watchtower path now works end to end: CSV in, profile JSON out, then a saved-profile diff into a human-readable incident report or a failing gate.
 
 ### 4. Example datasets (`examples/`)
 
@@ -106,7 +110,7 @@ The repo includes a baseline `orders.csv` snapshot and a drifted `orders_drifted
 
 ### 5. Deploy + telemetry pipeline
 
-Vercel deploy with `/api/stats` cached 5 minutes, GitHub Actions for the type-check + vitest gate, build-time `_telemetry_static.json` artifact computed by `scripts/compute_telemetry_static.py`.
+Vercel deploy with `/api/stats` cached 5 minutes, GitHub Actions for Python tests plus dashboard type-check and vitest, and build-time `_telemetry_static.json` artifact computed by `scripts/compute_telemetry_static.py`.
 
 ---
 
@@ -125,7 +129,7 @@ Vercel deploy with `/api/stats` cached 5 minutes, GitHub Actions for the type-ch
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-The current dashboard is the public-facing shell. The Python CLI now includes the first real watchtower slice: schema fingerprinting, null-rate tracking, numeric drift detection, and incident reporting from saved snapshots.
+The current dashboard is the public-facing shell. The Python CLI now includes the first real watchtower slice: schema fingerprinting, null-rate tracking, numeric drift detection, cardinality collapse detection, incident reporting, and gating from saved snapshots.
 
 ---
 
@@ -146,7 +150,9 @@ npm run dev          # http://localhost:3000
 cd data-quality-watchtower
 python -m data_quality_watchtower.cli profile examples/orders.csv --output baseline.json
 python -m data_quality_watchtower.cli profile examples/orders_drifted.csv --output new_run.json
+python -m data_quality_watchtower.cli show baseline.json
 python -m data_quality_watchtower.cli compare baseline.json new_run.json
+python -m data_quality_watchtower.cli gate baseline.json new_run.json
 ```
 
 ### Test + type-check
@@ -169,7 +175,7 @@ Next.js 14 App Router · TypeScript strict · Tailwind 3 · Geist Sans + Mono ·
 | keys | action |
 |---|---|
 | ⌘K / Ctrl+K | Command palette |
-| G then O / T / C / R | Overview / Telemetry / Capabilities / Roadmap |
+| G then O / P / T / C / R | Overview / Prototype / Telemetry / Capabilities / Roadmap |
 
 ---
 
@@ -178,7 +184,7 @@ Next.js 14 App Router · TypeScript strict · Tailwind 3 · Geist Sans + Mono ·
 - **Operator's hub**: [eleventh.dev](https://eleventh.dev) — the public site this dashboard's telemetry feeds into
 - **Reference shipped project**: [NexusRAG](https://github.com/IgnazioDS/NexusRAG) — production-grade multi-tenant RAG agent platform, same operator
 - **Telemetry contract**: [TELEMETRY_SCHEMA.md](https://github.com/IgnazioDS/IgnazioDS/blob/main/TELEMETRY_SCHEMA.md) — what the Tier-B counters mean and what they don't
-- **Status of this project**: prototype-tier. The local profiler and snapshot diff ship today; the next step is richer baselines, persistence, and live alert routing.
+- **Status of this project**: prototype-tier. The local profiler, incident report, and drift gate ship today; the next step is richer baselines, persistence, and live alert routing.
 
 ---
 

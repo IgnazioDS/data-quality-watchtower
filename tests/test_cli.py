@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from data_quality_watchtower.cli import run
+from data_quality_watchtower.cli import execute, run
 
 
 class CliTests(unittest.TestCase):
@@ -68,6 +68,38 @@ class CliTests(unittest.TestCase):
 
             self.assertTrue(report.exists())
             self.assertEqual(payload["incident_severity"], "critical")
+
+    def test_show_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            baseline = Path(tmpdir) / "baseline.json"
+            run(["profile", self.orders, "--output", str(baseline), "--format", "json"])
+            output = run(["show", str(baseline)])
+
+            self.assertIn("Schema fingerprint:", output)
+            self.assertIn("top values:", output)
+
+    def test_compare_markdown_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            baseline = Path(tmpdir) / "baseline.json"
+            candidate = Path(tmpdir) / "candidate.json"
+            report = Path(tmpdir) / "incident.md"
+            run(["profile", self.orders, "--output", str(baseline), "--format", "json"])
+            run(["profile", self.orders_drifted, "--output", str(candidate), "--format", "json"])
+            output = run(["compare", str(baseline), str(candidate), "--format", "markdown", "--report", str(report)])
+
+            self.assertTrue(report.exists())
+            self.assertIn("# Data Quality Incident Report", output)
+
+    def test_gate_command_returns_nonzero(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            baseline = Path(tmpdir) / "baseline.json"
+            candidate = Path(tmpdir) / "candidate.json"
+            run(["profile", self.orders, "--output", str(baseline), "--format", "json"])
+            run(["profile", self.orders_drifted, "--output", str(candidate), "--format", "json"])
+            output, exit_code = execute(["gate", str(baseline), str(candidate)])
+
+            self.assertEqual(exit_code, 2)
+            self.assertIn("Gate FAIL", output)
 
 
 if __name__ == "__main__":

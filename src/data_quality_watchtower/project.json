@@ -19,6 +19,7 @@
     "Detect drift and row-level anomalies",
     "Generate plain-language incident summaries",
     "Store historical validation results",
-    "Compare saved profiles for schema, null-rate, and outlier drift"
+    "Compare saved profiles for schema, null-rate, outlier, and cardinality drift",
+    "Gate releases on dataset drift thresholds"
   ]
 }

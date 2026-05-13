@@ -7,6 +7,7 @@
 - Generate plain-language incident summaries
 - Store historical validation results
 - Compare saved snapshots for schema, null-rate, and outlier drift
+- Gate releases on explicit data-quality thresholds
 
 ## Phase 2
 
