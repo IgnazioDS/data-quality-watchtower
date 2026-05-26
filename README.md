@@ -70,16 +70,21 @@ Next.js 14 App Router app at the live URL above. Six routes:
 
 | path | what it shows |
 |---|---|
-| `/` | Overview — pitch banner, live `/api/stats` Tier-B counters, system status, audience + stack |
+| `/` | Overview — latest drift incident, Tier-A `/api/stats` counters, 30-day verdict history, audience + stack |
 | `/prototype` | Real incident walkthrough — baseline vs drifted snapshot, gate verdict, CLI flow |
 | `/telemetry` | Polling telemetry consumer — full metric grid, raw JSON, 30s visibility-aware polling, contract docs |
 | `/capabilities` | MVP scope, problem statement, why-now, audience, stack — read from `project.json` |
 | `/roadmap` | Three-phase timeline (showcase → MVP build → Tier-A graduation) |
 | `/settings` | Theme + project metadata |
 
-### 2. Telemetry endpoint (`api/stats.py`)
+### 2. Public telemetry endpoints (`api/stats.py`, `api/incident-latest.py`)
 
-Stdlib-only Vercel Python serverless function. Reports honest GitHub-derived signals — commits, stars, last commit, primary language, lines of code. Never simulated workload metrics. Contract documented in [TELEMETRY_SCHEMA.md](https://github.com/IgnazioDS/IgnazioDS/blob/main/TELEMETRY_SCHEMA.md).
+Two stdlib-only Vercel Python functions. Both read repo-committed JSON artifacts the nightly scan produces, so there is no external database and no secret.
+
+- `GET /api/stats` reports Tier-A live workload counters: `datasets_monitored`, `checks_run_24h`, `anomalies_detected_24h`, `schema_drifts_30d`, `last_check_at`, plus `uptime_pct_30d` and `last_active_at`. `mode` is `"live"` because the workload is real and persisted across cold starts, not because there is user traffic. Contract: [TELEMETRY_SCHEMA.md](https://github.com/IgnazioDS/IgnazioDS/blob/main/TELEMETRY_SCHEMA.md).
+- `GET /api/incident-latest` serves the latest committed drift incident with a `previous_run` delta.
+
+Both send the schema CORS and cache headers and never return HTTP 5xx. `uptime_pct_30d` is the count of distinct UTC dates with a committed scan in the trailing 30 days over the days since the first scan (capped at 30). It is derived from committed history and never seeded.
 
 ### 3. Python profiler + drift comparator (`src/data_quality_watchtower/`)
 
@@ -108,28 +113,42 @@ The repo includes a baseline `orders.csv` snapshot and a drifted `orders_drifted
 - null-rate drift
 - suspicious revenue outliers
 
-### 5. Deploy + telemetry pipeline
+### 5. Nightly benchmark + persistence
 
-Vercel deploy with `/api/stats` cached 5 minutes, GitHub Actions for Python tests plus dashboard type-check and vitest, and build-time `_telemetry_static.json` artifact computed by `scripts/compute_telemetry_static.py`.
+`.github/workflows/nightly-scan.yml` runs `python -m data_quality_watchtower.incident_runner` daily. The runner selects one of five drift scenarios by date, runs the engine, and commits `api/_incident_latest.json`, `api/_incident_history.json`, and a dated `reports/*.md` back to the repo. Vercel redeploys on the push and the endpoints serve the committed artifact. Persistence is repo-committed JSON, no external store and no secret.
+
+The fixtures in `examples/fixtures/` are synthetic, seeded, and committed, so the benchmark reproduces in-repo (see [`examples/fixtures/README.md`](./examples/fixtures/README.md)). GitHub Actions also runs the Python tests, the dashboard type-check, and vitest on every push.
+
+Reproduce a scan locally:
+
+```bash
+pip install -e .
+python -m data_quality_watchtower.incident_runner
+cat api/_incident_latest.json
+```
 
 ---
 
 ## Architecture
 
 ```
-┌──── current repo state (prototype-tier) ───────────────────────────┐
-│                                                                    │
-│  Next.js dashboard ──▶  /api/stats (stdlib Python)  ──▶  GitHub   │
-│  (5 routes)              cached 5 min                      API     │
-│       │                                                            │
-│       └─▶  reads ──▶  project.json  ◀── reads ── Python CLI       │
-│                       (typed registry)                             │
-│                                  │                                 │
-│                                  └─▶ CSV profiler ─▶ Incident diff │
-└────────────────────────────────────────────────────────────────────┘
+┌──── current repo state (live benchmark, synthetic fixtures) ───────────────┐
+│                                                                            │
+│  nightly cron ─▶ incident_runner ─▶ watchtower engine                      │
+│  (GitHub Actions)      │             (profile / compare / gate)            │
+│                        ▼                                                    │
+│              commits artifacts back ─▶ Vercel redeploys                     │
+│              (api/_incident_*.json + reports/*.md)                          │
+│                        │                                                    │
+│                        ▼                                                    │
+│   /api/stats (Tier-A)  +  /api/incident-latest   ◀── read committed JSON    │
+│                        │                                                    │
+│                        ▼                                                    │
+│              Next.js dashboard (overview, prototype, telemetry)            │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
-The current dashboard is the public-facing shell. The Python CLI now includes the first real watchtower slice: schema fingerprinting, null-rate tracking, numeric drift detection, cardinality collapse detection, incident reporting, and gating from saved snapshots.
+The watchtower engine (`watchtower.py`) does the profiling, comparison, and gating. `incident_runner.py` drives it nightly against the date-selected fixture and commits the result, which the stdlib endpoints serve. The `/prototype` route walks one baseline-vs-drifted comparison through the same engine.
 
 ---
 
@@ -184,7 +203,7 @@ Next.js 14 App Router · TypeScript strict · Tailwind 3 · Geist Sans + Mono ·
 - **Operator's hub**: [eleventh.dev](https://eleventh.dev) — the public site this dashboard's telemetry feeds into
 - **Reference shipped project**: [NexusRAG](https://github.com/IgnazioDS/NexusRAG) — production-grade multi-tenant RAG agent platform, same operator
 - **Telemetry contract**: [TELEMETRY_SCHEMA.md](https://github.com/IgnazioDS/IgnazioDS/blob/main/TELEMETRY_SCHEMA.md) — what the Tier-B counters mean and what they don't
-- **Status of this project**: prototype-tier. The local profiler, incident report, and drift gate ship today; the next step is richer baselines, persistence, and live alert routing.
+- **Status of this project**: a live public benchmark. The profiler, comparator, and drift gate run nightly against committed synthetic fixtures, with Tier-A telemetry persisted in-repo. The next step is running the same engine against real customer datasets with live alert routing.
 
 ---
 

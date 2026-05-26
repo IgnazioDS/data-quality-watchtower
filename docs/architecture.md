@@ -17,3 +17,12 @@ Data Quality Watchtower now has a real local boundary: CSV profiling, saved prof
 - `catalog.py` loads the shipped product spec.
 - `cli.py` exposes summary, profile, show, compare, gate, capabilities, and roadmap commands.
 - `watchtower.py` implements schema fingerprinting, type inference, null-rate analysis, numeric outlier summaries, cardinality drift detection, profile comparison, and gate assessment.
+- `fixtures.py` defines the synthetic fixture catalog and the date-based scenario rotation.
+- `incident_runner.py` drives the engine nightly against the date-selected fixture and writes the committed artifacts.
+- `report.py` renders the incident artifact as a Markdown report.
+
+## Public surface
+
+- `api/stats.py` serves Tier-A live telemetry from the committed incident artifacts.
+- `api/incident-latest.py` serves the latest committed incident with a previous-run delta.
+- `.github/workflows/nightly-scan.yml` runs the scan and commits the result back. Persistence is repo-committed JSON, no external store.

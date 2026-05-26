@@ -1,0 +1,48 @@
+{
+  "system": "data-quality-watchtower",
+  "schema_version": 1,
+  "run_id": "dqw-2026-05-26-value_distribution_shift",
+  "fixture": "orders",
+  "scenario": "value_distribution_shift",
+  "scenario_title": "Value-distribution shift",
+  "scenario_description": "A billing column collapses toward zero.",
+  "baseline_rows": 500,
+  "current_rows": 500,
+  "drift_detected": true,
+  "severity": "warning",
+  "gate_verdict": "fail",
+  "detection_reasons": [
+    "Column `revenue_usd` mean moved from 1651.381 to 286.916 (ratio -0.826). The values shifted in a plausible but unverified direction."
+  ],
+  "incident_summary": "Warning incident: numeric shift on revenue_usd (mean delta -0.826, outlier delta +0.024).",
+  "findings": [
+    {
+      "kind": "distribution_shift",
+      "column": "revenue_usd",
+      "message": "Column `revenue_usd` mean moved from 1651.381 to 286.916 (ratio -0.826). The values shifted in a plausible but unverified direction.",
+      "detail": {
+        "baseline_mean": 1651.381,
+        "candidate_mean": 286.916,
+        "mean_delta_ratio": -0.826
+      }
+    }
+  ],
+  "datasets_monitored": 6,
+  "metrics": {
+    "checks_run": 50,
+    "anomalies_detected": 1,
+    "schema_drift_count": 0
+  },
+  "report_url": "https://github.com/IgnazioDS/data-quality-watchtower/blob/main/reports/incident-2026-05-26.md",
+  "generated_at": "2026-05-26T07:36:38Z",
+  "previous_run": null,
+  "recent_runs": [
+    {
+      "date": "2026-05-26",
+      "severity": "warning",
+      "gate_verdict": "fail",
+      "drift_detected": true,
+      "anomalies_detected": 1
+    }
+  ]
+}
