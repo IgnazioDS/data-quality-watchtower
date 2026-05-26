@@ -1,0 +1,15 @@
+[
+  {
+    "run_id": "dqw-2026-05-26-value_distribution_shift",
+    "generated_at": "2026-05-26T07:36:38Z",
+    "date": "2026-05-26",
+    "scenario": "value_distribution_shift",
+    "severity": "warning",
+    "gate_verdict": "fail",
+    "drift_detected": true,
+    "checks_run": 50,
+    "anomalies_detected": 1,
+    "schema_drift_count": 0,
+    "status": "ok"
+  }
+]

@@ -9,11 +9,14 @@
 - Compare saved snapshots for schema, null-rate, and outlier drift
 - Gate releases on explicit data-quality thresholds
 
+Phase 1 ships now as a live public benchmark: the engine runs nightly against
+committed synthetic fixtures and the results persist in the repo.
+
 ## Phase 2
 
-- Add production integrations for the target users.
-- Introduce persistence and operational telemetry.
-- Expose a service layer beyond the local CLI.
+- Run the same engine against real customer datasets.
+- Move the committed-JSON validation ledger to a durable store as history deepens.
+- Expose a service layer beyond the local CLI and the nightly cron.
 
 ## Phase 3
 

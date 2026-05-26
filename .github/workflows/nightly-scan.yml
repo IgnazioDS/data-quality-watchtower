@@ -1,0 +1,48 @@
+name: nightly-scan
+
+# Runs the drift scan against the date-selected synthetic fixture, then commits
+# the result artifacts back to the repo. Vercel redeploys on the push and the
+# stdlib endpoints (api/stats.py, api/incident-latest.py) read the committed
+# files. No external persistence, no secrets.
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # 06:00 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: pip install -e .
+
+      - name: Run drift scan
+        run: python -m data_quality_watchtower.incident_runner
+
+      - name: Commit artifacts if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add api/_incident_latest.json api/_incident_history.json reports/
+          if git diff --cached --quiet; then
+            echo "No telemetry changes to commit."
+          else
+            git commit -m "chore(telemetry): nightly drift scan $(date -u +%Y-%m-%d) [skip ci]"
+            git push
+          fi
