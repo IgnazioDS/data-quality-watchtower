@@ -24,6 +24,7 @@ from typing import Any
 SYSTEM_SLUG = "data-quality-watchtower"
 SCHEMA_VERSION = 1
 MODE = "live"
+WORKLOAD = "benchmark"  # Tier-A workload kind per TELEMETRY_SCHEMA.md (synthetic benchmark, not production traffic)
 
 _DAY_SECONDS = 86_400
 WINDOW_24H = _DAY_SECONDS
@@ -155,6 +156,7 @@ def _build_response() -> dict[str, Any]:
     return {
         "system": SYSTEM_SLUG,
         "mode": MODE,
+        "workload": WORKLOAD,
         "status": "operational" if operational else "degraded",
         "last_deployed_at": (
             os.environ.get("VERCEL_GIT_COMMIT_AUTHOR_DATE") or last_active_at
@@ -171,6 +173,7 @@ def _degraded_response() -> dict[str, Any]:
     return {
         "system": SYSTEM_SLUG,
         "mode": MODE,
+        "workload": WORKLOAD,
         "status": "degraded",
         "last_deployed_at": None,
         "last_active_at": None,
