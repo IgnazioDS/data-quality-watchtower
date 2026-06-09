@@ -42,6 +42,7 @@ def _read_json(path: Path) -> Any:
 def _degraded() -> dict[str, Any]:
     return {
         "system": SYSTEM_SLUG,
+        "benchmark_type": "drift",
         "schema_version": SCHEMA_VERSION,
         "status": "degraded",
         "run_id": None,
@@ -63,6 +64,7 @@ def _build_response() -> dict[str, Any]:
     if isinstance(incident, dict) and incident.get("schema_version") == SCHEMA_VERSION:
         # Served verbatim: exactly what the cron committed. generated_at is the
         # scan time, not the request time, so it is the honest "as of" stamp.
+        incident.setdefault("benchmark_type", "drift")
         incident.setdefault("previous_run", None)
         return incident
     return _degraded()
