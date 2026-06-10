@@ -52,6 +52,7 @@ class BuildResponseTests(unittest.TestCase):
         self.assertEqual(response["run_id"], _SEED["run_id"])
         self.assertEqual(response["severity"], "critical")
         self.assertEqual(response["schema_version"], 1)
+        self.assertEqual(response["benchmark_type"], "drift")
         self.assertIn("previous_run", response)
 
     def test_degraded_when_missing(self) -> None:
@@ -59,6 +60,7 @@ class BuildResponseTests(unittest.TestCase):
         response = incident_latest._build_response()
         self.assertEqual(response["status"], "degraded")
         self.assertEqual(response["schema_version"], 1)
+        self.assertEqual(response["benchmark_type"], "drift")
         self.assertFalse(response["drift_detected"])
         self.assertIn("previous_run", response)
         self.assertIsNone(response["previous_run"])
@@ -108,6 +110,7 @@ class HandlerTests(unittest.TestCase):
         self.assertIn("max-age=30", headers.get("Cache-Control", ""))
         payload = json.loads(body)
         self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["benchmark_type"], "drift")
         self.assertIn("previous_run", payload)
 
     def test_options_returns_204(self) -> None:

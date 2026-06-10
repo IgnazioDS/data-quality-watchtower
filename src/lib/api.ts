@@ -74,6 +74,7 @@ export interface PreviousRun {
 /** Latest drift-scan incident. See /api/incident-latest. */
 export interface IncidentLatest {
   system: string;
+  benchmark_type?: "drift";
   schema_version: number;
   status?: "operational" | "degraded";
   run_id: string | null;
