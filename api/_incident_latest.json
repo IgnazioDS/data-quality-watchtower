@@ -1,0 +1,73 @@
+{
+  "system": "data-quality-watchtower",
+  "schema_version": 1,
+  "run_id": "dqw-2026-05-28-type_coercion",
+  "fixture": "orders",
+  "scenario": "type_coercion",
+  "scenario_title": "Type coercion",
+  "scenario_description": "A numeric column starts arriving as free text.",
+  "baseline_rows": 500,
+  "current_rows": 500,
+  "drift_detected": true,
+  "severity": "critical",
+  "gate_verdict": "fail",
+  "detection_reasons": [
+    "Column `quantity` changed type from integer to string. Numeric consumers will coerce or reject the values without warning."
+  ],
+  "incident_summary": "Critical incident: type changes: quantity (integer -> string).",
+  "findings": [
+    {
+      "kind": "type_change",
+      "column": "quantity",
+      "message": "Column `quantity` changed type from integer to string. Numeric consumers will coerce or reject the values without warning.",
+      "detail": {
+        "baseline_type": "integer",
+        "candidate_type": "string"
+      }
+    }
+  ],
+  "datasets_monitored": 6,
+  "metrics": {
+    "checks_run": 50,
+    "anomalies_detected": 1,
+    "schema_drift_count": 1
+  },
+  "report_url": "https://github.com/IgnazioDS/data-quality-watchtower/blob/main/reports/incident-2026-05-28.md",
+  "generated_at": "2026-05-28T09:44:36Z",
+  "previous_run": {
+    "run_id": "dqw-2026-05-27-cardinality_collapse",
+    "generated_at": "2026-05-27T09:00:53Z",
+    "scenario": "cardinality_collapse",
+    "severity": "critical",
+    "gate_verdict": "fail",
+    "drift_detected": true,
+    "delta": {
+      "severity": "critical -> critical",
+      "gate_verdict": "fail -> fail",
+      "scenario": "cardinality_collapse -> type_coercion"
+    }
+  },
+  "recent_runs": [
+    {
+      "date": "2026-05-28",
+      "severity": "critical",
+      "gate_verdict": "fail",
+      "drift_detected": true,
+      "anomalies_detected": 1
+    },
+    {
+      "date": "2026-05-27",
+      "severity": "critical",
+      "gate_verdict": "fail",
+      "drift_detected": true,
+      "anomalies_detected": 1
+    },
+    {
+      "date": "2026-05-26",
+      "severity": "warning",
+      "gate_verdict": "fail",
+      "drift_detected": true,
+      "anomalies_detected": 1
+    }
+  ]
+}
