@@ -16,6 +16,8 @@ previous_run }. ``previous_run`` is null until a second scan has run.
 from __future__ import annotations
 
 import json
+import os
+import urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
@@ -27,6 +29,12 @@ SCHEMA_VERSION = 1
 _DIR = Path(__file__).parent
 LATEST_FILE = _DIR / "_incident_latest.json"
 
+# The nightly cron publishes here because main is ruleset-protected.
+_TELEMETRY_RAW_BASE = (
+    "https://raw.githubusercontent.com/IgnazioDS/data-quality-watchtower/telemetry/api/"
+)
+_FETCH_TIMEOUT_S = 2.5
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -36,6 +44,27 @@ def _read_json(path: Path) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, OSError, ValueError):
+        return None
+
+
+def _fetch_remote_json(filename: str) -> Any:
+    """Best-effort fetch of the freshest artifact from the telemetry data branch.
+
+    Returns None on any failure so the caller falls back to the committed copy.
+    Only runs in the deployed Vercel runtime; tests/local use the committed copy.
+    """
+    if not os.environ.get("VERCEL"):
+        return None
+    try:
+        req = urllib.request.Request(
+            _TELEMETRY_RAW_BASE + filename,
+            headers={"User-Agent": f"{SYSTEM_SLUG}-telemetry"},
+        )
+        with urllib.request.urlopen(req, timeout=_FETCH_TIMEOUT_S) as resp:
+            if resp.status != 200:
+                return None
+            return json.loads(resp.read().decode("utf-8"))
+    except Exception:  # noqa: BLE001 - the contract forbids 5xx; fall back instead
         return None
 
 
@@ -60,7 +89,9 @@ def _degraded() -> dict[str, Any]:
 
 
 def _build_response() -> dict[str, Any]:
-    incident = _read_json(LATEST_FILE)
+    incident = _fetch_remote_json("_incident_latest.json")
+    if not isinstance(incident, dict):
+        incident = _read_json(LATEST_FILE)
     if isinstance(incident, dict) and incident.get("schema_version") == SCHEMA_VERSION:
         # Served verbatim: exactly what the cron committed. generated_at is the
         # scan time, not the request time, so it is the honest "as of" stamp.

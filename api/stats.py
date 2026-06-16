@@ -1,11 +1,14 @@
 """Public Tier-A telemetry endpoint for data-quality-watchtower.
 
 Stdlib-only Vercel Python serverless function. Reports the real, recurring
-drift-scan workload: the nightly GitHub Actions cron runs the scan, commits the
-result JSON back to the repo, Vercel redeploys, and this function reads the
-committed artifacts. There is no external database, no secret, and no in-memory
+drift-scan workload: the nightly GitHub Actions cron runs the scan and publishes
+the result JSON to the unprotected ``telemetry`` data branch (the default branch
+is ruleset-protected, so the bot cannot push there). This function reads the
+freshest artifact from that branch at request time, falling back to the copy
+committed on main if the fetch fails — so it never depends on the network and
+never returns 5xx. There is no external database, no secret, and no in-memory
 counter that resets on cold start. ``mode`` is ``"live"`` because the workload
-is real and persisted durably in the repo.
+is real and persisted durably in git.
 
 Metrics describe THAT workload truthfully and nothing else. No user-traffic
 counters are fabricated; the fixtures are synthetic and labelled as such.
@@ -16,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
@@ -44,6 +48,12 @@ _DIR = Path(__file__).parent
 LATEST_FILE = _DIR / "_incident_latest.json"
 HISTORY_FILE = _DIR / "_incident_history.json"
 
+# The nightly cron publishes here because main is ruleset-protected.
+_TELEMETRY_RAW_BASE = (
+    "https://raw.githubusercontent.com/IgnazioDS/data-quality-watchtower/telemetry/api/"
+)
+_FETCH_TIMEOUT_S = 2.5  # keep the endpoint fast; fall back to the committed copy
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
@@ -62,6 +72,29 @@ def _read_json(path: Path) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, OSError, ValueError):
+        return None
+
+
+def _fetch_remote_json(filename: str) -> Any:
+    """Best-effort fetch of the freshest artifact from the telemetry data branch.
+
+    Returns None on any failure (network, non-200, parse) so the caller falls
+    back to the locally committed copy. Public repo, so no auth is needed. Only
+    runs in the deployed Vercel runtime; tests and local runs use the committed
+    copy, keeping them deterministic and offline.
+    """
+    if not os.environ.get("VERCEL"):
+        return None
+    try:
+        req = urllib.request.Request(
+            _TELEMETRY_RAW_BASE + filename,
+            headers={"User-Agent": f"{SYSTEM_SLUG}-telemetry"},
+        )
+        with urllib.request.urlopen(req, timeout=_FETCH_TIMEOUT_S) as resp:
+            if resp.status != 200:
+                return None
+            return json.loads(resp.read().decode("utf-8"))
+    except Exception:  # noqa: BLE001 - the contract forbids 5xx; fall back instead
         return None
 
 
@@ -121,8 +154,8 @@ def _uptime_pct_30d(history: list[dict[str, Any]], now: datetime) -> float:
 
     Honest cadence-reliability measure: the count of distinct UTC dates with a
     committed scan, over the number of days the watchtower has been running
-    (capped at 30). Derived entirely from committed run history, never seeded.
-    The method is documented in the repo README.
+    (capped at 30). Derived entirely from the published run history (telemetry
+    branch), never seeded. The method is documented in the repo README.
     """
     dates_in_window: set[Any] = set()
     first_ts: datetime | None = None
@@ -145,8 +178,14 @@ def _uptime_pct_30d(history: list[dict[str, Any]], now: datetime) -> float:
 def _build_response() -> dict[str, Any]:
     """Compose the Tier-A response. Always returns a parseable dict."""
     now = _now()
-    latest = _read_json(LATEST_FILE)
-    history = _read_json(HISTORY_FILE)
+    # Prefer the freshest artifact from the telemetry branch; fall back to the
+    # copy committed on main so a network blip degrades gracefully, not loudly.
+    latest = _fetch_remote_json("_incident_latest.json")
+    if not isinstance(latest, dict):
+        latest = _read_json(LATEST_FILE)
+    history = _fetch_remote_json("_incident_history.json")
+    if not isinstance(history, list):
+        history = _read_json(HISTORY_FILE)
     if not isinstance(history, list):
         history = []
 

@@ -46,7 +46,7 @@ REPORTS_DIR = _REPO_ROOT / "reports"
 
 _REPORT_URL_TEMPLATE = (
     "https://github.com/IgnazioDS/data-quality-watchtower"
-    "/blob/main/reports/incident-{day}.md"
+    "/blob/telemetry/reports/incident-{day}.md"
 )
 
 _REQUIRED_KEYS = (
