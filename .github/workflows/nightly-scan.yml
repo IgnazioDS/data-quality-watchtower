@@ -1,9 +1,16 @@
 name: nightly-scan
 
-# Runs the drift scan against the date-selected synthetic fixture, then commits
-# the result artifacts back to the repo. Vercel redeploys on the push and the
-# stdlib endpoints (api/stats.py, api/incident-latest.py) read the committed
-# files. No external persistence, no secrets.
+# Runs the drift scan against the date-selected synthetic fixture, then publishes
+# the result artifacts to the unprotected `telemetry` data branch. The default
+# branch is protected by the "main protection" ruleset, and the default
+# GITHUB_TOKEN cannot push to a protected branch — so the auditable git-as-database
+# loop lives on `telemetry` instead. The live stdlib endpoints (api/stats.py,
+# api/incident-latest.py) read the freshest artifact from that branch at request
+# time, falling back to the copy committed on main. No external persistence,
+# no secrets.
+#
+# History accumulates: the runner appends to the prior history, so we seed it
+# from the telemetry branch before each run.
 
 on:
   schedule:
@@ -11,7 +18,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write # push the data files to the telemetry branch
 
 concurrency:
   group: nightly-scan
@@ -32,17 +39,43 @@ jobs:
       - name: Install package
         run: pip install -e .
 
+      - name: Seed accumulated history from telemetry branch
+        run: |
+          if git ls-remote --exit-code --heads origin telemetry >/dev/null 2>&1; then
+            git fetch origin telemetry --depth=1
+            git show origin/telemetry:api/_incident_history.json \
+              > api/_incident_history.json 2>/dev/null || true
+          fi
+
       - name: Run drift scan
         run: python -m data_quality_watchtower.incident_runner
 
-      - name: Commit artifacts if changed
+      - name: Publish artifacts to telemetry branch
         run: |
+          day="$(date -u +%Y-%m-%d)"
+          stage="$(mktemp -d)"
+          mkdir -p "$stage/api" "$stage/reports"
+          cp api/_incident_latest.json api/_incident_history.json "$stage/api/"
+          cp reports/incident-*.md "$stage/reports/" 2>/dev/null || true
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add api/_incident_latest.json api/_incident_history.json reports/
-          if git diff --cached --quiet; then
-            echo "No telemetry changes to commit."
+
+          if git ls-remote --exit-code --heads origin telemetry >/dev/null 2>&1; then
+            git fetch origin telemetry --depth=1
+            git worktree add -B telemetry .telemetry origin/telemetry
           else
-            git commit -m "chore(telemetry): nightly drift scan $(date -u +%Y-%m-%d) [skip ci]"
-            git push
+            git worktree add --orphan -b telemetry .telemetry
+          fi
+
+          mkdir -p .telemetry/api .telemetry/reports
+          cp "$stage/api/"* .telemetry/api/
+          cp "$stage/reports/"*.md .telemetry/reports/ 2>/dev/null || true
+
+          git -C .telemetry add api reports
+          if git -C .telemetry diff --cached --quiet; then
+            echo "No telemetry changes to publish."
+          else
+            git -C .telemetry commit -m "telemetry: nightly drift scan ${day}"
+            git -C .telemetry push origin telemetry
           fi
