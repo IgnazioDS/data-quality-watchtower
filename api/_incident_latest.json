@@ -1,53 +1,60 @@
 {
   "system": "data-quality-watchtower",
   "schema_version": 1,
-  "run_id": "dqw-2026-06-17-type_coercion",
+  "run_id": "dqw-2026-06-18-schema_add",
   "fixture": "orders",
-  "scenario": "type_coercion",
-  "scenario_title": "Type coercion",
-  "scenario_description": "A numeric column starts arriving as free text.",
+  "scenario": "schema_add",
+  "scenario_title": "Schema add",
+  "scenario_description": "An upstream producer adds an unexpected column.",
   "baseline_rows": 500,
   "current_rows": 500,
   "drift_detected": true,
-  "severity": "critical",
-  "gate_verdict": "fail",
+  "severity": "warning",
+  "gate_verdict": "pass",
   "detection_reasons": [
-    "Column `quantity` changed type from integer to string. Numeric consumers will coerce or reject the values without warning."
+    "New column `discount_code` appeared that is absent from the baseline. Readers pinned to a fixed column set will ignore it or reject the row."
   ],
-  "incident_summary": "Critical incident: type changes: quantity (integer -> string).",
+  "incident_summary": "Warning incident: new columns detected: discount_code.",
   "findings": [
     {
-      "kind": "type_change",
-      "column": "quantity",
-      "message": "Column `quantity` changed type from integer to string. Numeric consumers will coerce or reject the values without warning.",
+      "kind": "schema_add",
+      "column": "discount_code",
+      "message": "New column `discount_code` appeared that is absent from the baseline. Readers pinned to a fixed column set will ignore it or reject the row.",
       "detail": {
-        "baseline_type": "integer",
-        "candidate_type": "string"
+        "present_in": "candidate",
+        "absent_in": "baseline"
       }
     }
   ],
   "datasets_monitored": 6,
   "metrics": {
-    "checks_run": 50,
+    "checks_run": 51,
     "anomalies_detected": 1,
     "schema_drift_count": 1
   },
-  "report_url": "https://github.com/IgnazioDS/data-quality-watchtower/blob/telemetry/reports/incident-2026-06-17.md",
-  "generated_at": "2026-06-17T10:25:06Z",
+  "report_url": "https://github.com/IgnazioDS/data-quality-watchtower/blob/telemetry/reports/incident-2026-06-18.md",
+  "generated_at": "2026-06-18T10:03:55Z",
   "previous_run": {
-    "run_id": "dqw-2026-06-16-cardinality_collapse",
-    "generated_at": "2026-06-16T13:40:39Z",
-    "scenario": "cardinality_collapse",
+    "run_id": "dqw-2026-06-17-type_coercion",
+    "generated_at": "2026-06-17T10:25:06Z",
+    "scenario": "type_coercion",
     "severity": "critical",
     "gate_verdict": "fail",
     "drift_detected": true,
     "delta": {
-      "severity": "critical -> critical",
-      "gate_verdict": "fail -> fail",
-      "scenario": "cardinality_collapse -> type_coercion"
+      "severity": "critical -> warning",
+      "gate_verdict": "fail -> pass",
+      "scenario": "type_coercion -> schema_add"
     }
   },
   "recent_runs": [
+    {
+      "date": "2026-06-18",
+      "severity": "warning",
+      "gate_verdict": "pass",
+      "drift_detected": true,
+      "anomalies_detected": 1
+    },
     {
       "date": "2026-06-17",
       "severity": "critical",
