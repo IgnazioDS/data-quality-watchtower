@@ -1,5 +1,18 @@
 [
   {
+    "run_id": "dqw-2026-06-24-null_rate_shift",
+    "generated_at": "2026-06-24T08:52:31Z",
+    "date": "2026-06-24",
+    "scenario": "null_rate_shift",
+    "severity": "warning",
+    "gate_verdict": "fail",
+    "drift_detected": true,
+    "checks_run": 50,
+    "anomalies_detected": 1,
+    "schema_drift_count": 0,
+    "status": "ok"
+  },
+  {
     "run_id": "dqw-2026-06-23-schema_add",
     "generated_at": "2026-06-23T08:57:27Z",
     "date": "2026-06-23",
