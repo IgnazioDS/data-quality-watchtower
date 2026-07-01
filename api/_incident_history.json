@@ -1,5 +1,18 @@
 [
   {
+    "run_id": "dqw-2026-07-01-cardinality_collapse",
+    "generated_at": "2026-07-01T09:28:30Z",
+    "date": "2026-07-01",
+    "scenario": "cardinality_collapse",
+    "severity": "critical",
+    "gate_verdict": "fail",
+    "drift_detected": true,
+    "checks_run": 50,
+    "anomalies_detected": 1,
+    "schema_drift_count": 0,
+    "status": "ok"
+  },
+  {
     "run_id": "dqw-2026-06-30-value_distribution_shift",
     "generated_at": "2026-06-30T08:55:32Z",
     "date": "2026-06-30",

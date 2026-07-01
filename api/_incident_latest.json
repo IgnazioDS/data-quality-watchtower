@@ -1,29 +1,28 @@
 {
   "system": "data-quality-watchtower",
   "schema_version": 1,
-  "run_id": "dqw-2026-06-30-value_distribution_shift",
+  "run_id": "dqw-2026-07-01-cardinality_collapse",
   "fixture": "orders",
-  "scenario": "value_distribution_shift",
-  "scenario_title": "Value-distribution shift",
-  "scenario_description": "A billing column collapses toward zero.",
+  "scenario": "cardinality_collapse",
+  "scenario_title": "Cardinality collapse",
+  "scenario_description": "A foreign key loses most of its unique values.",
   "baseline_rows": 500,
   "current_rows": 500,
   "drift_detected": true,
-  "severity": "warning",
+  "severity": "critical",
   "gate_verdict": "fail",
   "detection_reasons": [
-    "Column `revenue_usd` mean moved from 1651.381 to 286.916 (ratio -0.826). The values shifted in a plausible but unverified direction."
+    "Column `customer_id` distinct values collapsed from 303 to 15. A high-cardinality key is now nearly constant, so joins fan out or collapse while the query still runs."
   ],
-  "incident_summary": "Warning incident: numeric shift on revenue_usd (mean delta -0.826, outlier delta +0.024).",
+  "incident_summary": "Critical incident: cardinality collapse on customer_id (303 -> 15).",
   "findings": [
     {
-      "kind": "distribution_shift",
-      "column": "revenue_usd",
-      "message": "Column `revenue_usd` mean moved from 1651.381 to 286.916 (ratio -0.826). The values shifted in a plausible but unverified direction.",
+      "kind": "cardinality_collapse",
+      "column": "customer_id",
+      "message": "Column `customer_id` distinct values collapsed from 303 to 15. A high-cardinality key is now nearly constant, so joins fan out or collapse while the query still runs.",
       "detail": {
-        "baseline_mean": 1651.381,
-        "candidate_mean": 286.916,
-        "mean_delta_ratio": -0.826
+        "baseline_unique_count": 303,
+        "candidate_unique_count": 15
       }
     }
   ],
@@ -33,22 +32,29 @@
     "anomalies_detected": 1,
     "schema_drift_count": 0
   },
-  "report_url": "https://github.com/IgnazioDS/data-quality-watchtower/blob/telemetry/reports/incident-2026-06-30.md",
-  "generated_at": "2026-06-30T08:55:32Z",
+  "report_url": "https://github.com/IgnazioDS/data-quality-watchtower/blob/telemetry/reports/incident-2026-07-01.md",
+  "generated_at": "2026-07-01T09:28:30Z",
   "previous_run": {
-    "run_id": "dqw-2026-06-29-null_rate_shift",
-    "generated_at": "2026-06-29T10:20:55Z",
-    "scenario": "null_rate_shift",
+    "run_id": "dqw-2026-06-30-value_distribution_shift",
+    "generated_at": "2026-06-30T08:55:32Z",
+    "scenario": "value_distribution_shift",
     "severity": "warning",
     "gate_verdict": "fail",
     "drift_detected": true,
     "delta": {
-      "severity": "warning -> warning",
+      "severity": "warning -> critical",
       "gate_verdict": "fail -> fail",
-      "scenario": "null_rate_shift -> value_distribution_shift"
+      "scenario": "value_distribution_shift -> cardinality_collapse"
     }
   },
   "recent_runs": [
+    {
+      "date": "2026-07-01",
+      "severity": "critical",
+      "gate_verdict": "fail",
+      "drift_detected": true,
+      "anomalies_detected": 1
+    },
     {
       "date": "2026-06-30",
       "severity": "warning",
