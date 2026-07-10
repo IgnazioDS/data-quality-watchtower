@@ -1,29 +1,29 @@
 {
   "system": "data-quality-watchtower",
   "schema_version": 1,
-  "run_id": "dqw-2026-07-09-null_rate_shift",
+  "run_id": "dqw-2026-07-10-value_distribution_shift",
   "fixture": "orders",
-  "scenario": "null_rate_shift",
-  "scenario_title": "Null-rate shift",
-  "scenario_description": "A reliably populated column starts arriving mostly empty.",
+  "scenario": "value_distribution_shift",
+  "scenario_title": "Value-distribution shift",
+  "scenario_description": "A billing column collapses toward zero.",
   "baseline_rows": 500,
   "current_rows": 500,
   "drift_detected": true,
   "severity": "warning",
   "gate_verdict": "fail",
   "detection_reasons": [
-    "Column `region` null rate moved from 0.024 to 0.43 (delta +0.406). A reliably populated column is now frequently empty."
+    "Column `revenue_usd` mean moved from 1651.381 to 286.916 (ratio -0.826). The values shifted in a plausible but unverified direction."
   ],
-  "incident_summary": "Warning incident: null-rate drift on region (0.024 -> 0.430).",
+  "incident_summary": "Warning incident: numeric shift on revenue_usd (mean delta -0.826, outlier delta +0.024).",
   "findings": [
     {
-      "kind": "null_rate_shift",
-      "column": "region",
-      "message": "Column `region` null rate moved from 0.024 to 0.43 (delta +0.406). A reliably populated column is now frequently empty.",
+      "kind": "distribution_shift",
+      "column": "revenue_usd",
+      "message": "Column `revenue_usd` mean moved from 1651.381 to 286.916 (ratio -0.826). The values shifted in a plausible but unverified direction.",
       "detail": {
-        "baseline_null_rate": 0.024,
-        "candidate_null_rate": 0.43,
-        "delta": 0.406
+        "baseline_mean": 1651.381,
+        "candidate_mean": 286.916,
+        "mean_delta_ratio": -0.826
       }
     }
   ],
@@ -33,22 +33,29 @@
     "anomalies_detected": 1,
     "schema_drift_count": 0
   },
-  "report_url": "https://github.com/IgnazioDS/data-quality-watchtower/blob/telemetry/reports/incident-2026-07-09.md",
-  "generated_at": "2026-07-09T09:25:08Z",
+  "report_url": "https://github.com/IgnazioDS/data-quality-watchtower/blob/telemetry/reports/incident-2026-07-10.md",
+  "generated_at": "2026-07-10T09:17:24Z",
   "previous_run": {
-    "run_id": "dqw-2026-07-08-schema_add",
-    "generated_at": "2026-07-08T08:06:58Z",
-    "scenario": "schema_add",
+    "run_id": "dqw-2026-07-09-null_rate_shift",
+    "generated_at": "2026-07-09T09:25:08Z",
+    "scenario": "null_rate_shift",
     "severity": "warning",
-    "gate_verdict": "pass",
+    "gate_verdict": "fail",
     "drift_detected": true,
     "delta": {
       "severity": "warning -> warning",
-      "gate_verdict": "pass -> fail",
-      "scenario": "schema_add -> null_rate_shift"
+      "gate_verdict": "fail -> fail",
+      "scenario": "null_rate_shift -> value_distribution_shift"
     }
   },
   "recent_runs": [
+    {
+      "date": "2026-07-10",
+      "severity": "warning",
+      "gate_verdict": "fail",
+      "drift_detected": true,
+      "anomalies_detected": 1
+    },
     {
       "date": "2026-07-09",
       "severity": "warning",
