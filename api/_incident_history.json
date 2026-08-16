@@ -1,5 +1,18 @@
 [
   {
+    "run_id": "dqw-2026-08-16-type_coercion",
+    "generated_at": "2026-08-16T06:21:42Z",
+    "date": "2026-08-16",
+    "scenario": "type_coercion",
+    "severity": "critical",
+    "gate_verdict": "fail",
+    "drift_detected": true,
+    "checks_run": 50,
+    "anomalies_detected": 1,
+    "schema_drift_count": 1,
+    "status": "ok"
+  },
+  {
     "run_id": "dqw-2026-08-15-cardinality_collapse",
     "generated_at": "2026-08-15T06:19:13Z",
     "date": "2026-08-15",
