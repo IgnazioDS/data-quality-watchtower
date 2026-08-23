@@ -1,53 +1,61 @@
 {
   "system": "data-quality-watchtower",
   "schema_version": 1,
-  "run_id": "dqw-2026-08-22-schema_add",
+  "run_id": "dqw-2026-08-23-null_rate_shift",
   "fixture": "orders",
-  "scenario": "schema_add",
-  "scenario_title": "Schema add",
-  "scenario_description": "An upstream producer adds an unexpected column.",
+  "scenario": "null_rate_shift",
+  "scenario_title": "Null-rate shift",
+  "scenario_description": "A reliably populated column starts arriving mostly empty.",
   "baseline_rows": 500,
   "current_rows": 500,
   "drift_detected": true,
   "severity": "warning",
-  "gate_verdict": "pass",
+  "gate_verdict": "fail",
   "detection_reasons": [
-    "New column `discount_code` appeared that is absent from the baseline. Readers pinned to a fixed column set will ignore it or reject the row."
+    "Column `region` null rate moved from 0.024 to 0.43 (delta +0.406). A reliably populated column is now frequently empty."
   ],
-  "incident_summary": "Warning incident: new columns detected: discount_code.",
+  "incident_summary": "Warning incident: null-rate drift on region (0.024 -> 0.430).",
   "findings": [
     {
-      "kind": "schema_add",
-      "column": "discount_code",
-      "message": "New column `discount_code` appeared that is absent from the baseline. Readers pinned to a fixed column set will ignore it or reject the row.",
+      "kind": "null_rate_shift",
+      "column": "region",
+      "message": "Column `region` null rate moved from 0.024 to 0.43 (delta +0.406). A reliably populated column is now frequently empty.",
       "detail": {
-        "present_in": "candidate",
-        "absent_in": "baseline"
+        "baseline_null_rate": 0.024,
+        "candidate_null_rate": 0.43,
+        "delta": 0.406
       }
     }
   ],
   "datasets_monitored": 6,
   "metrics": {
-    "checks_run": 51,
+    "checks_run": 50,
     "anomalies_detected": 1,
-    "schema_drift_count": 1
+    "schema_drift_count": 0
   },
-  "report_url": "https://github.com/IgnazioDS/data-quality-watchtower/blob/telemetry/reports/incident-2026-08-22.md",
-  "generated_at": "2026-08-22T06:20:42Z",
+  "report_url": "https://github.com/IgnazioDS/data-quality-watchtower/blob/telemetry/reports/incident-2026-08-23.md",
+  "generated_at": "2026-08-23T06:22:18Z",
   "previous_run": {
-    "run_id": "dqw-2026-08-21-type_coercion",
-    "generated_at": "2026-08-21T06:26:54Z",
-    "scenario": "type_coercion",
-    "severity": "critical",
-    "gate_verdict": "fail",
+    "run_id": "dqw-2026-08-22-schema_add",
+    "generated_at": "2026-08-22T06:20:42Z",
+    "scenario": "schema_add",
+    "severity": "warning",
+    "gate_verdict": "pass",
     "drift_detected": true,
     "delta": {
-      "severity": "critical -> warning",
-      "gate_verdict": "fail -> pass",
-      "scenario": "type_coercion -> schema_add"
+      "severity": "warning -> warning",
+      "gate_verdict": "pass -> fail",
+      "scenario": "schema_add -> null_rate_shift"
     }
   },
   "recent_runs": [
+    {
+      "date": "2026-08-23",
+      "severity": "warning",
+      "gate_verdict": "fail",
+      "drift_detected": true,
+      "anomalies_detected": 1
+    },
     {
       "date": "2026-08-22",
       "severity": "warning",
@@ -246,13 +254,6 @@
     },
     {
       "date": "2026-07-25",
-      "severity": "warning",
-      "gate_verdict": "fail",
-      "drift_detected": true,
-      "anomalies_detected": 1
-    },
-    {
-      "date": "2026-07-24",
       "severity": "warning",
       "gate_verdict": "fail",
       "drift_detected": true,
