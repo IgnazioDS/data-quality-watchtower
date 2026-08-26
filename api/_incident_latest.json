@@ -1,28 +1,28 @@
 {
   "system": "data-quality-watchtower",
   "schema_version": 1,
-  "run_id": "dqw-2026-08-25-cardinality_collapse",
+  "run_id": "dqw-2026-08-26-type_coercion",
   "fixture": "orders",
-  "scenario": "cardinality_collapse",
-  "scenario_title": "Cardinality collapse",
-  "scenario_description": "A foreign key loses most of its unique values.",
+  "scenario": "type_coercion",
+  "scenario_title": "Type coercion",
+  "scenario_description": "A numeric column starts arriving as free text.",
   "baseline_rows": 500,
   "current_rows": 500,
   "drift_detected": true,
   "severity": "critical",
   "gate_verdict": "fail",
   "detection_reasons": [
-    "Column `customer_id` distinct values collapsed from 303 to 15. A high-cardinality key is now nearly constant, so joins fan out or collapse while the query still runs."
+    "Column `quantity` changed type from integer to string. Numeric consumers will coerce or reject the values without warning."
   ],
-  "incident_summary": "Critical incident: cardinality collapse on customer_id (303 -> 15).",
+  "incident_summary": "Critical incident: type changes: quantity (integer -> string).",
   "findings": [
     {
-      "kind": "cardinality_collapse",
-      "column": "customer_id",
-      "message": "Column `customer_id` distinct values collapsed from 303 to 15. A high-cardinality key is now nearly constant, so joins fan out or collapse while the query still runs.",
+      "kind": "type_change",
+      "column": "quantity",
+      "message": "Column `quantity` changed type from integer to string. Numeric consumers will coerce or reject the values without warning.",
       "detail": {
-        "baseline_unique_count": 303,
-        "candidate_unique_count": 15
+        "baseline_type": "integer",
+        "candidate_type": "string"
       }
     }
   ],
@@ -30,24 +30,31 @@
   "metrics": {
     "checks_run": 50,
     "anomalies_detected": 1,
-    "schema_drift_count": 0
+    "schema_drift_count": 1
   },
-  "report_url": "https://github.com/IgnazioDS/data-quality-watchtower/blob/telemetry/reports/incident-2026-08-25.md",
-  "generated_at": "2026-08-25T06:26:30Z",
+  "report_url": "https://github.com/IgnazioDS/data-quality-watchtower/blob/telemetry/reports/incident-2026-08-26.md",
+  "generated_at": "2026-08-26T06:29:03Z",
   "previous_run": {
-    "run_id": "dqw-2026-08-24-value_distribution_shift",
-    "generated_at": "2026-08-24T06:34:58Z",
-    "scenario": "value_distribution_shift",
-    "severity": "warning",
+    "run_id": "dqw-2026-08-25-cardinality_collapse",
+    "generated_at": "2026-08-25T06:26:30Z",
+    "scenario": "cardinality_collapse",
+    "severity": "critical",
     "gate_verdict": "fail",
     "drift_detected": true,
     "delta": {
-      "severity": "warning -> critical",
+      "severity": "critical -> critical",
       "gate_verdict": "fail -> fail",
-      "scenario": "value_distribution_shift -> cardinality_collapse"
+      "scenario": "cardinality_collapse -> type_coercion"
     }
   },
   "recent_runs": [
+    {
+      "date": "2026-08-26",
+      "severity": "critical",
+      "gate_verdict": "fail",
+      "drift_detected": true,
+      "anomalies_detected": 1
+    },
     {
       "date": "2026-08-25",
       "severity": "critical",
@@ -248,13 +255,6 @@
       "date": "2026-07-28",
       "severity": "warning",
       "gate_verdict": "pass",
-      "drift_detected": true,
-      "anomalies_detected": 1
-    },
-    {
-      "date": "2026-07-27",
-      "severity": "critical",
-      "gate_verdict": "fail",
       "drift_detected": true,
       "anomalies_detected": 1
     }
