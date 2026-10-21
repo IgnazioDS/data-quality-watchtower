@@ -1,5 +1,18 @@
 [
   {
+    "run_id": "dqw-2026-10-21-schema_add",
+    "generated_at": "2026-10-21T10:47:46Z",
+    "date": "2026-10-21",
+    "scenario": "schema_add",
+    "severity": "warning",
+    "gate_verdict": "pass",
+    "drift_detected": true,
+    "checks_run": 51,
+    "anomalies_detected": 1,
+    "schema_drift_count": 1,
+    "status": "ok"
+  },
+  {
     "run_id": "dqw-2026-10-20-type_coercion",
     "generated_at": "2026-10-20T10:36:34Z",
     "date": "2026-10-20",
