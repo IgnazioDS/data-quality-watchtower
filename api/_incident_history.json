@@ -1,5 +1,18 @@
 [
   {
+    "run_id": "dqw-2026-11-12-value_distribution_shift",
+    "generated_at": "2026-11-12T14:12:37Z",
+    "date": "2026-11-12",
+    "scenario": "value_distribution_shift",
+    "severity": "warning",
+    "gate_verdict": "fail",
+    "drift_detected": true,
+    "checks_run": 50,
+    "anomalies_detected": 1,
+    "schema_drift_count": 0,
+    "status": "ok"
+  },
+  {
     "run_id": "dqw-2026-11-11-null_rate_shift",
     "generated_at": "2026-11-11T13:09:49Z",
     "date": "2026-11-11",
